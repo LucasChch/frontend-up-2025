@@ -55,8 +55,7 @@ const UI = {
         // Botones de cierre de modales
         closeModalBtns: document.querySelectorAll('.close-modal'),
     },
-    
-    /**
+      /**
      * Inicializa la interfaz
      */
     init() {
@@ -64,6 +63,7 @@ const UI = {
         this.loadInitialData();
         this.setupMinDateForBooking();
         this.loadImages();
+        this.updateTotalTurns();
     },
     
     /**
@@ -289,49 +289,74 @@ const UI = {
             this.elements.customerSelect.appendChild(option);
         });
     },
-    
-    /**
+      /**
      * Abre el modal para seleccionar un producto
      * @param {Object} product - Producto seleccionado
      */
     openProductModal(product) {
+        // Calcular turnos actuales y disponibles
+        let currentTotalTurns = 0;
+        this.state.selectedProducts.forEach(item => {
+            currentTotalTurns += item.turns;
+        });
+        
+        // Verificar si el producto ya está seleccionado
+        const existingProduct = this.state.selectedProducts.find(p => p.productId === product._id);
+        let availableTurns = 3 - currentTotalTurns;
+        
+        if (existingProduct) {
+            // Si el producto ya existe, sumar sus turnos actuales a los disponibles
+            availableTurns += existingProduct.turns;
+        }
+        
+        // Generar opciones de turnos dinámicamente
+        let turnsOptions = '';
+        if (availableTurns <= 0) {
+            turnsOptions = '<option value="">No hay turnos disponibles</option>';
+        } else {
+            for (let i = 1; i <= Math.min(availableTurns, 3); i++) {
+                const selected = existingProduct && existingProduct.turns === i ? 'selected' : '';
+                turnsOptions += `<option value="${i}" ${selected}>${i} turno${i > 1 ? 's' : ''} (${i * 30} min)</option>`;
+            }
+        }
+        
         this.elements.productModalBody.innerHTML = `
             <div class="product-selection">
                 <div class="product-selection-item">
                     <h4>${product.name}</h4>
                     <p>${product.category} - $${product.pricePerTurn} por turno</p>
+                    ${availableTurns <= 0 ? '<p class="error-message">⚠️ No se pueden agregar más turnos. Máximo permitido: 3 turnos.</p>' : ''}
+                    ${currentTotalTurns > 0 ? `<p class="helper-text">Turnos actuales: ${currentTotalTurns} | Turnos disponibles: ${availableTurns}</p>` : ''}
                 </div>
                 
                 <form class="product-selection-form">
                     <div class="form-group">
                         <label for="modal-quantity">Cantidad:</label>
-                        <input type="number" id="modal-quantity" min="1" max="${product.stock}" value="1">
+                        <input type="number" id="modal-quantity" min="1" max="${product.stock}" value="${existingProduct ? existingProduct.quantity : 1}">
                     </div>
                     
                     <div class="form-group">
                         <label for="modal-turns">Turnos:</label>
-                        <select id="modal-turns">
-                            <option value="1">1 turno (30 min)</option>
-                            <option value="2">2 turnos (1 hora)</option>
-                            <option value="3">3 turnos (1 hora 30 min)</option>
+                        <select id="modal-turns" ${availableTurns <= 0 ? 'disabled' : ''}>
+                            ${turnsOptions}
                         </select>
                     </div>
                     
                     <div class="form-group">
                         <label for="modal-people-count">Cantidad de personas:</label>
-                        <input type="number" id="modal-people-count" min="1" max="${product.maxPeople}" value="1">
+                        <input type="number" id="modal-people-count" min="1" max="${product.maxPeople}" value="${existingProduct ? existingProduct.peopleCount : 1}">
                     </div>
                     
                     ${product.requiresSafety ? `
                     <div class="form-group safety-items">
                         <label for="modal-safety-quantity">Cantidad de ${product.safetyRequiredType}s:</label>
-                        <input type="number" id="modal-safety-quantity" min="1" value="1">
+                        <input type="number" id="modal-safety-quantity" min="1" value="${existingProduct && existingProduct.safetyItems ? existingProduct.safetyItems.quantity : 1}">
                     </div>
                     ` : ''}
                     
                     <div class="form-actions">
                         <button type="button" class="btn-secondary" id="modal-cancel">Cancelar</button>
-                        <button type="button" class="btn-primary" id="modal-add">Agregar</button>
+                        <button type="button" class="btn-primary" id="modal-add" ${availableTurns <= 0 ? 'disabled' : ''}>${existingProduct ? 'Actualizar' : 'Agregar'}</button>
                     </div>
                 </form>
             </div>
@@ -341,11 +366,16 @@ const UI = {
         document.getElementById('modal-cancel').addEventListener('click', () => {
             this.closeAllModals();
         });
-        
-        document.getElementById('modal-add').addEventListener('click', () => {
+          document.getElementById('modal-add').addEventListener('click', () => {
             const quantity = parseInt(document.getElementById('modal-quantity').value);
             const turns = parseInt(document.getElementById('modal-turns').value);
             const peopleCount = parseInt(document.getElementById('modal-people-count').value);
+            
+            // Validación adicional antes de agregar
+            if (!turns || turns <= 0) {
+                alert('Por favor seleccione un número válido de turnos.');
+                return;
+            }
             
             let safetyItems = null;
             if (product.requiresSafety) {
@@ -362,16 +392,29 @@ const UI = {
         
         // Mostrar el modal
         this.elements.productModal.style.display = 'block';
-    },
-    
-    /**
+    },    /**
      * Agrega un producto a la reserva
      */
     addProductToBooking(product, quantity, turns, peopleCount, safetyItems) {
+        // Calcular el total de turnos actual
+        let currentTotalTurns = 0;
+        this.state.selectedProducts.forEach(item => {
+            currentTotalTurns += item.turns;
+        });
+        
         // Verificar si el producto ya está en la reserva
         const existingIndex = this.state.selectedProducts.findIndex(p => p.productId === product._id);
         
         if (existingIndex !== -1) {
+            // Si el producto ya existe, calcular la diferencia de turnos
+            const oldTurns = this.state.selectedProducts[existingIndex].turns;
+            const newTotalTurns = currentTotalTurns - oldTurns + turns;
+            
+            if (newTotalTurns > 3) {
+                alert(`No se puede actualizar el producto. El total de turnos no puede exceder 3.\nTurnos actuales: ${currentTotalTurns}\nTurnos solicitados para ${product.name}: ${turns}\nTotal resultante: ${newTotalTurns}`);
+                return;
+            }
+            
             // Actualizar el producto existente
             this.state.selectedProducts[existingIndex] = {
                 productId: product._id,
@@ -383,6 +426,14 @@ const UI = {
                 pricePerTurn: product.pricePerTurn
             };
         } else {
+            // Si es un producto nuevo, verificar si se excederían los 3 turnos
+            const newTotalTurns = currentTotalTurns + turns;
+            
+            if (newTotalTurns > 3) {
+                alert(`No se puede agregar el producto. El total de turnos no puede exceder 3.\nTurnos actuales: ${currentTotalTurns}\nTurnos solicitados para ${product.name}: ${turns}\nTotal resultante: ${newTotalTurns}`);
+                return;
+            }
+            
             // Agregar nuevo producto
             this.state.selectedProducts.push({
                 productId: product._id,
@@ -396,6 +447,7 @@ const UI = {
         }
         
         this.renderBookingProducts();
+        this.updateTotalTurns();
         this.updateBookingSummary();
         
         // Cambiar a la sección de reservas
@@ -410,17 +462,29 @@ const UI = {
             this.elements.bookingProducts.innerHTML = '<p class="empty-message">No hay productos seleccionados.</p>';
             return;
         }
+          this.elements.bookingProducts.innerHTML = '';
         
-        this.elements.bookingProducts.innerHTML = '';
+        // Calcular turnos actuales
+        let currentTotalTurns = 0;
+        this.state.selectedProducts.forEach(item => {
+            currentTotalTurns += item.turns;
+        });
         
         // Agregar botón para añadir más productos
         const addMoreBtn = document.createElement('button');
-        addMoreBtn.className = 'btn-secondary';
-        addMoreBtn.textContent = 'Agregar más productos';
+        const availableTurns = 3 - currentTotalTurns;        if (availableTurns > 0) {
+            addMoreBtn.className = 'btn-secondary';
+            addMoreBtn.textContent = `Agregar más productos (${availableTurns} turno${availableTurns > 1 ? 's' : ''} disponible${availableTurns > 1 ? 's' : ''})`;
+            addMoreBtn.addEventListener('click', () => {
+                this.showSection('products');
+            });
+        } else {
+            addMoreBtn.className = 'btn-secondary';
+            addMoreBtn.textContent = 'Máximo de turnos alcanzado (3/3)';
+            addMoreBtn.disabled = true;
+            addMoreBtn.title = 'No se pueden agregar más productos. Máximo 3 turnos por reserva.';
+        }
         addMoreBtn.style.marginBottom = '1rem';
-        addMoreBtn.addEventListener('click', () => {
-            this.showSection('products');
-        });
         this.elements.bookingProducts.appendChild(addMoreBtn);
         
         // Renderizar productos seleccionados
@@ -452,30 +516,58 @@ const UI = {
             this.elements.bookingProducts.appendChild(productItem);
         });
     },
-    
-    /**
+      /**
      * Elimina un producto de la reserva
      * @param {number} index - Índice del producto en el array
      */
     removeProductFromBooking(index) {
         this.state.selectedProducts.splice(index, 1);
         this.renderBookingProducts();
-        this.updateBookingSummary();
+        this.updateTotalTurns();
+        this.updateBookingSummary();    },
+    
+    /**
+     * Actualiza automáticamente el select de total de turnos basado en los productos seleccionados
+     */
+    updateTotalTurns() {
+        // Calcular el total de turnos de todos los productos seleccionados
+        let totalProductTurns = 0;
+        this.state.selectedProducts.forEach(item => {
+            totalProductTurns += item.turns;
+        });
+        
+        // Actualizar el select de total de turnos
+        this.elements.totalTurns.innerHTML = '';
+        
+        if (totalProductTurns === 0) {
+            // Si no hay productos, mostrar opciones por defecto
+            for (let i = 1; i <= 3; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = `${i} turno${i > 1 ? 's' : ''} (${i * 30} min)`;
+                this.elements.totalTurns.appendChild(option);
+            }
+        } else {
+            // Si hay productos, el total debe ser exactamente la suma de sus turnos
+            const option = document.createElement('option');
+            option.value = totalProductTurns;
+            option.textContent = `${totalProductTurns} turno${totalProductTurns > 1 ? 's' : ''} (${totalProductTurns * 30} min)`;
+            option.selected = true;
+            this.elements.totalTurns.appendChild(option);
+        }
     },
     
     /**
      * Actualiza el resumen de la reserva (precios, descuentos, etc.)
-     */
-    updateBookingSummary() {
+     */    updateBookingSummary() {
         if (this.state.selectedProducts.length === 0) {
             this.elements.summaryContent.innerHTML = '<p>Seleccione al menos un producto para ver el resumen.</p>';
             return;
         }
         
         let subTotal = 0;
-        const totalTurns = parseInt(this.elements.totalTurns.value) || 1;
         
-        // Calcular subtotal
+        // Calcular subtotal basado en los productos seleccionados
         this.state.selectedProducts.forEach(item => {
             const productTotal = item.pricePerTurn * item.quantity * item.turns;
             subTotal += productTotal;
@@ -492,16 +584,33 @@ const UI = {
         
         const total = subTotal - discountAmt;
         
+        // Mostrar detalle de productos en el resumen
+        let productsDetailHtml = '<div class="products-detail">';
+        this.state.selectedProducts.forEach(item => {
+            const itemTotal = item.pricePerTurn * item.quantity * item.turns;
+            productsDetailHtml += `
+                <div class="product-summary-line">
+                    <span>${item.productName} (${item.quantity}x${item.turns} turnos)</span>
+                    <span>$${itemTotal.toFixed(2)} ARS</span>
+                </div>
+            `;
+        });
+        productsDetailHtml += '</div>';
+        
         // Actualizar el resumen
         this.elements.summaryContent.innerHTML = `
+            ${productsDetailHtml}
+            <hr>
             <div class="summary-row">
                 <span>Subtotal:</span>
                 <span>$${subTotal.toFixed(2)} ARS</span>
             </div>
+            ${discountRate > 0 ? `
             <div class="summary-row">
                 <span>Descuento (${(discountRate * 100).toFixed(0)}%):</span>
                 <span>-$${discountAmt.toFixed(2)} ARS</span>
             </div>
+            ` : ''}
             <div class="summary-row summary-total">
                 <span>Total:</span>
                 <span>$${total.toFixed(2)} ARS</span>
@@ -576,15 +685,17 @@ const UI = {
                 alert('Por favor complete todos los campos obligatorios.');
                 return;
             }
-            
-            // Validar que la suma de turnos individuales sea igual al total
+              // Validar que la suma de turnos individuales sea igual al total
             let totalProductTurns = 0;
             this.state.selectedProducts.forEach(item => {
                 totalProductTurns += item.turns;
             });
             
+            // El totalTurns ahora se calcula automáticamente, pero validamos por consistencia
             if (totalProductTurns !== totalTurns) {
-                alert(`La suma de turnos de los productos (${totalProductTurns}) debe ser igual al total de turnos de la reserva (${totalTurns}).`);
+                // Esto ya no debería pasar con el nuevo sistema, pero mantenemos la validación
+                console.warn('Inconsistencia en turnos detectada, recalculando...');
+                this.updateTotalTurns();
                 return;
             }
             
@@ -608,10 +719,10 @@ const UI = {
             // Enviar la reserva
             const response = await API.createBooking(bookingData);
             this.showBookingResult(response);
-            
-            // Limpiar el formulario
+              // Limpiar el formulario
             this.state.selectedProducts = [];
             this.renderBookingProducts();
+            this.updateTotalTurns();
             this.updateBookingSummary();
             this.elements.bookingForm.reset();
             
