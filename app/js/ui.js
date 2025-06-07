@@ -43,8 +43,7 @@ const UI = {
         customerName: document.getElementById('customer-name'),
         customerEmail: document.getElementById('customer-email'),
         customerPhone: document.getElementById('customer-phone'),
-        
-        // Modales
+          // Modales
         productModal: document.getElementById('product-modal'),
         bookingResultModal: document.getElementById('booking-result-modal'),
         
@@ -54,8 +53,10 @@ const UI = {
         
         // Botones de cierre de modales
         closeModalBtns: document.querySelectorAll('.close-modal'),
-    },
-      /**
+        
+        // Botón de confirmar resultado de reserva
+        bookingResultConfirm: document.getElementById('booking-result-confirm'),
+    },    /**
      * Inicializa la interfaz
      */
     init() {
@@ -64,9 +65,9 @@ const UI = {
         this.setupMinDateForBooking();
         this.loadImages();
         this.updateTotalTurns();
+        this.setupScrollHandler();
     },
-    
-    /**
+      /**
      * Carga las imágenes predeterminadas para asegurar que están en caché
      */
     loadImages() {
@@ -88,6 +89,27 @@ const UI = {
     },
     
     /**
+     * Configura el manejo del scroll para el header
+     */
+    setupScrollHandler() {
+        const header = document.querySelector('header');
+        let lastScrollY = window.scrollY;
+        
+        window.addEventListener('scroll', () => {
+            const currentScrollY = window.scrollY;
+            
+            // Agregar clase cuando se hace scroll hacia abajo
+            if (currentScrollY > 50) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+            
+            lastScrollY = currentScrollY;
+        });
+    },
+    
+    /**
      * Configura los listeners de eventos
      */
     setupEventListeners() {
@@ -99,12 +121,16 @@ const UI = {
                 this.showSection(sectionId);
             });
         });
-        
-        // Cierre de modales
+          // Cierre de modales
         this.elements.closeModalBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 this.closeAllModals();
             });
+        });
+        
+        // Botón de confirmar en modal de resultado de reserva
+        this.elements.bookingResultConfirm.addEventListener('click', () => {
+            this.closeAllModals();
         });
         
         // Click fuera del modal para cerrar
@@ -389,9 +415,9 @@ const UI = {
             this.addProductToBooking(product, quantity, turns, peopleCount, safetyItems);
             this.closeAllModals();
         });
-        
-        // Mostrar el modal
-        this.elements.productModal.style.display = 'block';
+          // Mostrar el modal
+        this.elements.productModal.classList.add('show');
+        this.elements.productModal.style.display = 'flex';
     },    /**
      * Agrega un producto a la reserva
      */
@@ -816,17 +842,22 @@ const UI = {
                 </div>
             `;
         }
-        
-        this.elements.bookingResultModalBody.innerHTML = htmlContent;
-        this.elements.bookingResultModal.style.display = 'block';
+          this.elements.bookingResultModalBody.innerHTML = htmlContent;
+        this.elements.bookingResultModal.classList.add('show');
+        this.elements.bookingResultModal.style.display = 'flex';
     },
-    
-    /**
+      /**
      * Cierra todos los modales
      */
     closeAllModals() {
-        this.elements.productModal.style.display = 'none';
-        this.elements.bookingResultModal.style.display = 'none';
+        this.elements.productModal.classList.remove('show');
+        this.elements.bookingResultModal.classList.remove('show');
+        
+        // Pequeño delay para la animación antes de ocultar completamente
+        setTimeout(() => {
+            this.elements.productModal.style.display = 'none';
+            this.elements.bookingResultModal.style.display = 'none';
+        }, 300);
     },
     
     /**
