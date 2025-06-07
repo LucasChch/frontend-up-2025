@@ -1398,6 +1398,60 @@ html {
     }
 }
 
+/* Botón de error específico para modales */
+.btn-danger {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    color: white;
+    border: none;
+    padding: 0.875rem 2.5rem;
+    border-radius: var(--border-radius);
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: var(--transition);
+    min-height: 48px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
+}
+
+.btn-danger::before {
+    content: '⚠️';
+    position: absolute;
+    left: 1rem;
+    font-size: 1rem;
+    font-weight: bold;
+}
+
+.btn-danger:hover {
+    background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(220, 38, 38, 0.4);
+}
+
+.btn-danger:active {
+    transform: translateY(0);
+    box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
+}
+
+/* Animación específica para el botón de error */
+.btn-danger:hover::before {
+    animation: warningShake 0.6s ease-in-out;
+}
+
+@keyframes warningShake {
+    0%, 100% {
+        transform: translateX(0);
+    }
+    20%, 60% {
+        transform: translateX(-2px);
+    }
+    40%, 80% {
+        transform: translateX(2px);
+    }
+}
+
 /* Estilos específicos para el modal de resultado exitoso */
 .success-message {
     background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%);
@@ -1467,5 +1521,65 @@ html {
 
 .warning-message p::before {
     content: '⚠️';
+    font-size: 1.2rem;
+}
+
+/* Estilos para el modal de error */
+.error-message {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(220, 38, 38, 0.05) 100%);
+    border: 2px solid rgba(239, 68, 68, 0.2);
+    border-radius: var(--border-radius);
+    padding: 2rem;
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.error-message h3 {
+    color: #991b1b;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 700;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.error-message h3::before {
+    content: '⚠️';
+    font-size: 1.8rem;
+}
+
+.error-message p {
+    color: #dc2626;
+    font-weight: 500;
+    margin-bottom: 0.75rem;
+    line-height: 1.6;
+    white-space: pre-line; /* Para mantener los saltos de línea */
+}
+
+/* Estilos para mensaje informativo en modales de éxito */
+.info-message {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.05) 100%);
+    border: 2px solid rgba(59, 130, 246, 0.2);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    margin-top: 1rem;
+    text-align: center;
+}
+
+.info-message p {
+    color: #1d4ed8;
+    font-weight: 500;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.info-message p::before {
+    content: 'ℹ️';
     font-size: 1.2rem;
 }

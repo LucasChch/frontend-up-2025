@@ -43,19 +43,25 @@ const UI = {
         customerName: document.getElementById('customer-name'),
         customerEmail: document.getElementById('customer-email'),
         customerPhone: document.getElementById('customer-phone'),
-          // Modales
+        // Modales
         productModal: document.getElementById('product-modal'),
         bookingResultModal: document.getElementById('booking-result-modal'),
+        customerResultModal: document.getElementById('customer-result-modal'),
+        errorModal: document.getElementById('error-modal'),
         
         // Contenido de modales
         productModalBody: document.querySelector('#product-modal .modal-body'),
         bookingResultModalBody: document.querySelector('#booking-result-modal .modal-body'),
+        customerResultModalBody: document.querySelector('#customer-result-modal .modal-body'),
+        errorModalBody: document.querySelector('#error-modal .modal-body'),
         
         // Botones de cierre de modales
         closeModalBtns: document.querySelectorAll('.close-modal'),
         
-        // Botón de confirmar resultado de reserva
+        // Botones de confirmar modales
         bookingResultConfirm: document.getElementById('booking-result-confirm'),
+        customerResultConfirm: document.getElementById('customer-result-confirm'),
+        errorModalConfirm: document.getElementById('error-modal-confirm'),
     },    /**
      * Inicializa la interfaz
      */
@@ -127,18 +133,32 @@ const UI = {
                 this.closeAllModals();
             });
         });
-        
-        // Botón de confirmar en modal de resultado de reserva
+          // Botón de confirmar en modal de resultado de reserva
         this.elements.bookingResultConfirm.addEventListener('click', () => {
             this.closeAllModals();
         });
         
-        // Click fuera del modal para cerrar
+        // Botón de confirmar en modal de resultado de cliente
+        this.elements.customerResultConfirm.addEventListener('click', () => {
+            this.closeAllModals();
+        });
+        
+        // Botón de confirmar en modal de error
+        this.elements.errorModalConfirm.addEventListener('click', () => {
+            this.closeAllModals();
+        });
+          // Click fuera del modal para cerrar
         window.addEventListener('click', (e) => {
             if (e.target === this.elements.productModal) {
                 this.closeAllModals();
             }
             if (e.target === this.elements.bookingResultModal) {
+                this.closeAllModals();
+            }
+            if (e.target === this.elements.customerResultModal) {
+                this.closeAllModals();
+            }
+            if (e.target === this.elements.errorModal) {
                 this.closeAllModals();
             }
         });
@@ -396,10 +416,9 @@ const UI = {
             const quantity = parseInt(document.getElementById('modal-quantity').value);
             const turns = parseInt(document.getElementById('modal-turns').value);
             const peopleCount = parseInt(document.getElementById('modal-people-count').value);
-            
-            // Validación adicional antes de agregar
+              // Validación adicional antes de agregar
             if (!turns || turns <= 0) {
-                alert('Por favor seleccione un número válido de turnos.');
+                this.showErrorModal('Turnos inválidos', 'Por favor seleccione un número válido de turnos.');
                 return;
             }
             
@@ -435,9 +454,11 @@ const UI = {
             // Si el producto ya existe, calcular la diferencia de turnos
             const oldTurns = this.state.selectedProducts[existingIndex].turns;
             const newTotalTurns = currentTotalTurns - oldTurns + turns;
-            
-            if (newTotalTurns > 3) {
-                alert(`No se puede actualizar el producto. El total de turnos no puede exceder 3.\nTurnos actuales: ${currentTotalTurns}\nTurnos solicitados para ${product.name}: ${turns}\nTotal resultante: ${newTotalTurns}`);
+              if (newTotalTurns > 3) {
+                this.showErrorModal(
+                    'Límite de turnos excedido', 
+                    `No se puede actualizar el producto. El total de turnos no puede exceder 3.\n\nTurnos actuales: ${currentTotalTurns}\nTurnos solicitados para ${product.name}: ${turns}\nTotal resultante: ${newTotalTurns}`
+                );
                 return;
             }
             
@@ -454,9 +475,11 @@ const UI = {
         } else {
             // Si es un producto nuevo, verificar si se excederían los 3 turnos
             const newTotalTurns = currentTotalTurns + turns;
-            
-            if (newTotalTurns > 3) {
-                alert(`No se puede agregar el producto. El total de turnos no puede exceder 3.\nTurnos actuales: ${currentTotalTurns}\nTurnos solicitados para ${product.name}: ${turns}\nTotal resultante: ${newTotalTurns}`);
+              if (newTotalTurns > 3) {
+                this.showErrorModal(
+                    'Límite de turnos excedido', 
+                    `No se puede agregar el producto. El total de turnos no puede exceder 3.\n\nTurnos actuales: ${currentTotalTurns}\nTurnos solicitados para ${product.name}: ${turns}\nTotal resultante: ${newTotalTurns}`
+                );
                 return;
             }
             
@@ -693,10 +716,10 @@ const UI = {
     /**
      * Maneja el envío del formulario de reserva
      */
-    async handleBookingSubmit() {
+    async handleBookingSubmit() {        
         try {
             if (this.state.selectedProducts.length === 0) {
-                alert('Debe seleccionar al menos un producto para la reserva.');
+                this.showErrorModal('No hay productos', 'Debe seleccionar al menos un producto para la reserva.');
                 return;
             }
             
@@ -706,9 +729,8 @@ const UI = {
             const method = this.elements.paymentMethod.value;
             const currency = this.elements.currency.value;
             const amount = parseFloat(this.elements.amount.value) || 0;
-            
-            if (!customerId || !startTime || !totalTurns) {
-                alert('Por favor complete todos los campos obligatorios.');
+              if (!customerId || !startTime || !totalTurns) {
+                this.showErrorModal('Campos requeridos', 'Por favor complete todos los campos obligatorios.');
                 return;
             }
               // Validar que la suma de turnos individuales sea igual al total
@@ -751,10 +773,9 @@ const UI = {
             this.updateTotalTurns();
             this.updateBookingSummary();
             this.elements.bookingForm.reset();
-            
-        } catch (error) {
+              } catch (error) {
             console.error('Error al crear la reserva:', error);
-            alert('Error al crear la reserva: ' + error.message);
+            this.showErrorModal('Error al crear reserva', error.message);
         }
     },
     
@@ -766,9 +787,8 @@ const UI = {
             const name = this.elements.customerName.value;
             const email = this.elements.customerEmail.value;
             const phone = this.elements.customerPhone.value;
-            
-            if (!name || !email || !phone) {
-                alert('Por favor complete todos los campos del cliente.');
+              if (!name || !email || !phone) {
+                this.showErrorModal('Campos requeridos', 'Por favor complete todos los campos del cliente.');
                 return;
             }
             
@@ -782,16 +802,15 @@ const UI = {
             
             // Seleccionar el cliente recién creado en el formulario de reserva
             this.elements.customerSelect.value = newCustomer._id;
-            
-            // Limpiar el formulario
+              // Limpiar el formulario
             this.elements.customerForm.reset();
             
-            // Mostrar mensaje de éxito
-            alert('Cliente registrado correctamente.');
+            // Mostrar modal de resultado de cliente
+            this.showCustomerResult(newCustomer);
             
         } catch (error) {
             console.error('Error al crear el cliente:', error);
-            alert('Error al crear el cliente: ' + error.message);
+            this.showErrorModal('Error al crear cliente', error.message);
         }
     },
     
@@ -846,17 +865,64 @@ const UI = {
         this.elements.bookingResultModal.classList.add('show');
         this.elements.bookingResultModal.style.display = 'flex';
     },
-      /**
+    
+    /**
+     * Muestra el resultado de la creación de cliente en un modal
+     * @param {Object} customer - Datos del cliente creado
+     */
+    showCustomerResult(customer) {
+        const htmlContent = `
+            <div class="success-message">
+                <h3>¡Cliente registrado exitosamente!</h3>
+                <p><strong>ID del cliente:</strong> ${customer._id}</p>
+                <p><strong>Nombre:</strong> ${customer.name}</p>
+                <p><strong>Email:</strong> ${customer.email}</p>
+                <p><strong>Teléfono:</strong> ${customer.phone}</p>
+                <p><strong>Fecha de registro:</strong> ${new Date(customer.createdAt).toLocaleString()}</p>
+            </div>
+            <div class="info-message">
+                <p>El cliente ha sido agregado a la lista y ya está disponible para crear reservas.</p>
+            </div>
+        `;
+        
+        this.elements.customerResultModalBody.innerHTML = htmlContent;
+        this.elements.customerResultModal.classList.add('show');
+        this.elements.customerResultModal.style.display = 'flex';
+    },
+
+    /**
+     * Muestra un modal de error en lugar de alert()
+     * @param {string} title - Título del error
+     * @param {string} message - Mensaje de error
+     */
+    showErrorModal(title, message) {
+        const htmlContent = `
+            <div class="error-message">
+                <h3>${title}</h3>
+                <p>${message}</p>
+            </div>
+        `;
+        
+        this.elements.errorModalBody.innerHTML = htmlContent;
+        this.elements.errorModal.classList.add('show');
+        this.elements.errorModal.style.display = 'flex';
+    },
+
+    /**
      * Cierra todos los modales
      */
     closeAllModals() {
         this.elements.productModal.classList.remove('show');
         this.elements.bookingResultModal.classList.remove('show');
+        this.elements.customerResultModal.classList.remove('show');
+        this.elements.errorModal.classList.remove('show');
         
         // Pequeño delay para la animación antes de ocultar completamente
         setTimeout(() => {
             this.elements.productModal.style.display = 'none';
             this.elements.bookingResultModal.style.display = 'none';
+            this.elements.customerResultModal.style.display = 'none';
+            this.elements.errorModal.style.display = 'none';
         }, 300);
     },
     
