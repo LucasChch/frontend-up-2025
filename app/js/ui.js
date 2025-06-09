@@ -126,6 +126,50 @@ const UI = {
                 const sectionId = link.dataset.section;
                 this.showSection(sectionId);
             });
+        });        // Validación del campo teléfono para solo permitir números
+        this.elements.customerPhone.addEventListener('input', (e) => {
+            // Permitir solo números, espacios, paréntesis, guiones y el símbolo +
+            const validChars = /[0-9+\-\s\(\)]/;
+            const value = e.target.value;
+            let filteredValue = '';
+            
+            for (let char of value) {
+                if (validChars.test(char)) {
+                    filteredValue += char;
+                }
+            }
+            
+            // Si el valor cambió, actualizar el campo y mostrar feedback visual
+            if (value !== filteredValue) {
+                e.target.value = filteredValue;
+                // Agregar feedback visual temporal
+                e.target.style.borderColor = '#ff6b6b';
+                setTimeout(() => {
+                    e.target.style.borderColor = '';
+                }, 1000);
+            }
+        });
+
+        this.elements.customerPhone.addEventListener('keypress', (e) => {
+            // Prevenir caracteres no válidos durante la escritura
+            const char = String.fromCharCode(e.which);
+            const validChars = /[0-9+\-\s\(\)]/;
+            
+            if (!validChars.test(char) && !e.ctrlKey && !e.metaKey) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        this.elements.customerPhone.addEventListener('paste', (e) => {
+            // Validar contenido pegado
+            setTimeout(() => {
+                const value = e.target.value;
+                const cleanValue = value.replace(/[^0-9+\-\s\(\)]/g, '');
+                if (value !== cleanValue) {
+                    e.target.value = cleanValue;
+                }
+            }, 0);
         });
           // Cierre de modales
         this.elements.closeModalBtns.forEach(btn => {
@@ -781,14 +825,18 @@ const UI = {
     
     /**
      * Maneja el envío del formulario de cliente nuevo
-     */
-    async handleCustomerSubmit() {
+     */    async handleCustomerSubmit() {
         try {
             const name = this.elements.customerName.value;
             const email = this.elements.customerEmail.value;
             const phone = this.elements.customerPhone.value;
               if (!name || !email || !phone) {
                 this.showErrorModal('Campos requeridos', 'Por favor complete todos los campos del cliente.');
+                return;
+            }            // Validar formato del teléfono
+            const phoneValidation = this.validatePhoneNumber(phone);
+            if (!phoneValidation.isValid) {
+                this.showErrorModal('Teléfono inválido', phoneValidation.message);
                 return;
             }
             
@@ -814,6 +862,46 @@ const UI = {
         }
     },
     
+    /**
+     * Valida si un número de teléfono tiene un formato válido
+     * @param {string} phone - Número de teléfono a validar
+     * @returns {Object} - Objeto con isValid y mensaje de error si aplica
+     */
+    validatePhoneNumber(phone) {
+        if (!phone || phone.trim() === '') {
+            return { isValid: false, message: 'El número de teléfono es requerido.' };
+        }
+
+        // Verificar caracteres permitidos
+        const allowedPattern = /^[0-9+\-\s\(\)]+$/;
+        if (!allowedPattern.test(phone)) {
+            return { 
+                isValid: false, 
+                message: 'El número de teléfono solo puede contener números, espacios, paréntesis, guiones y el símbolo +.' 
+            };
+        }
+
+        // Verificar que tiene al menos algunos números
+        const hasNumbers = /\d/.test(phone);
+        if (!hasNumbers) {
+            return { 
+                isValid: false, 
+                message: 'El número de teléfono debe contener al menos un dígito.' 
+            };
+        }
+
+        // Verificar longitud mínima de dígitos (al menos 6 dígitos)
+        const digits = phone.replace(/[^0-9]/g, '');
+        if (digits.length < 6) {
+            return { 
+                isValid: false, 
+                message: 'El número de teléfono debe tener al menos 6 dígitos.' 
+            };
+        }
+
+        return { isValid: true, message: '' };
+    },
+
     /**
      * Muestra el resultado de la reserva en un modal
      * @param {Object} bookingResult - Resultado de la reserva

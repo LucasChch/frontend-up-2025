@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rental de Playa - Sistema de Reservas</title>
     <link rel="stylesheet" href="css/styles.css">
 </head>
+
 <body>
     <header>
         <h1>Rental de Playa - Caribe</h1>
@@ -38,7 +40,7 @@
                         <option value="">Seleccione un cliente</option>
                     </select>
                 </div>
-                
+
                 <div class="form-group">
                     <label for="start-time">Fecha y hora de inicio:</label>
                     <input type="datetime-local" id="start-time" required>
@@ -114,7 +116,9 @@
                 </div>
                 <div class="form-group">
                     <label for="customer-phone">Teléfono:</label>
-                    <input type="tel" id="customer-phone" required>
+                    <input type="tel" id="customer-phone" pattern="[0-9+\-\s\(\)]+"
+                        title="Solo se permiten números, espacios, paréntesis, guiones y el símbolo +"
+                        placeholder="Ej: +54 11 1234-5678" required>
                 </div>
                 <div class="form-actions">
                     <button type="submit" class="btn-secondary">Registrar Cliente</button>
@@ -132,7 +136,7 @@
                 <!-- El contenido se cargará dinámicamente -->
             </div>
         </div>
-    </div>    <!-- Modal para información de la reserva -->
+    </div> <!-- Modal para información de la reserva -->
     <div class="modal" id="booking-result-modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -141,10 +145,12 @@
             </div>
             <div class="modal-body">
                 <!-- El contenido se cargará dinámicamente -->
-            </div>            <div class="modal-footer">
+            </div>
+            <div class="modal-footer">
                 <button id="booking-result-confirm" class="btn-success">Entendido</button>
             </div>
-        </div>    </div>
+        </div>
+    </div>
 
     <!-- Modal para resultado de creación de cliente -->
     <div class="modal" id="customer-result-modal">
@@ -171,7 +177,8 @@
             </div>
             <div class="modal-body">
                 <!-- El contenido se cargará dinámicamente -->
-            </div>            <div class="modal-footer">
+            </div>
+            <div class="modal-footer">
                 <button id="error-modal-confirm" class="btn-danger">Entendido</button>
             </div>
         </div>
@@ -186,4 +193,5 @@
     <script src="js/ui.js"></script>
     <script src="js/app.js"></script>
 </body>
+
 </html>
