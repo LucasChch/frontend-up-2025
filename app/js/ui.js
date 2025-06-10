@@ -1134,7 +1134,6 @@ const UI = {
                 this.updateTotalTurns();
                 return;
             }
-            
             // Preparar los datos
             const bookingData = {
                 customerId,
@@ -1142,7 +1141,6 @@ const UI = {
                 totalTurns,
                 method,
                 currency,
-                amount,
                 items: this.state.selectedProducts.map(item => ({
                     productId: item.productId,
                     quantity: item.quantity,
@@ -1151,6 +1149,12 @@ const UI = {
                     safetyItems: item.safetyItems
                 }))
             };
+
+            // Solo incluir el amount si el método de pago es tarjeta
+            // Cuando es efectivo, el pago es pendiente y no se envía amount
+            if (method === 'card') {
+                bookingData.amount = amount;
+            }
             
             // Enviar la reserva
             const response = await API.createBooking(bookingData);
@@ -1253,14 +1257,26 @@ const UI = {
     showBookingResult(bookingResult) {
         let htmlContent = '';
         
-        if (bookingResult && bookingResult.booking) {
+        if (bookingResult && bookingResult.booking) {            
             htmlContent = `
                 <div class="success-message">
                     <h3>¡Reserva creada exitosamente!</h3>
                     <p><strong>ID de la reserva:</strong> ${bookingResult.booking._id}</p>
                     <p><strong>Estado:</strong> ${this.translateBookingStatus(bookingResult.booking.status)}</p>
-                    <p><strong>Fecha de inicio:</strong> ${new Date(bookingResult.booking.startTime).toLocaleString()}</p>
-                    <p><strong>Fecha de fin:</strong> ${new Date(bookingResult.booking.endTime).toLocaleString()}</p>
+                    <p><strong>Fecha de inicio:</strong> ${new Date(bookingResult.booking.startTime).toLocaleString('es-ES', { 
+                        year: 'numeric', 
+                        month: '2-digit', 
+                        day: '2-digit', 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                    })}</p>
+                    <p><strong>Fecha de fin:</strong> ${new Date(bookingResult.booking.endTime).toLocaleString('es-ES', { 
+                        year: 'numeric', 
+                        month: '2-digit', 
+                        day: '2-digit', 
+                        hour: '2-digit', 
+                        minute: '2-digit' 
+                    })}</p>
                 </div>
             `;
               if (bookingResult.payment) {
@@ -1283,12 +1299,17 @@ const UI = {
                         <p><strong>Total:</strong> ${currencySymbol}${displayTotal.toFixed(2)} ${paymentCurrency}</p>
                         <p><strong>Método:</strong> ${payment.method === 'card' ? 'Tarjeta' : 'Efectivo'}</p>
                     `;
-                
-                if (payment.status === 'pending') {
+                  if (payment.status === 'pending') {
                     htmlContent += `
                         <div class="warning-message">
-                            <p>Recuerde que debe pagar la reserva al menos 2 horas antes del inicio.</p>
-                            <p><strong>Fecha límite de pago:</strong> ${payment.dueDate ? new Date(payment.dueDate).toLocaleString() : 'No especificada'}</p>
+                            <span>Recuerde que debe pagar la reserva al menos 2 horas antes del inicio.</span>
+                            <p><strong>Fecha límite de pago:</strong> ${payment.dueDate ? new Date(payment.dueDate).toLocaleString('es-ES', { 
+                                year: 'numeric', 
+                                month: '2-digit', 
+                                day: '2-digit', 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                            }) : 'No especificada'}</p>
                         </div>
                     `;
                 }

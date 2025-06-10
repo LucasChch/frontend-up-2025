@@ -1611,7 +1611,7 @@ html {
     gap: 0.5rem;
 }
 
-.warning-message p::before {
+.warning-message span::before {
     content: '⚠️';
     font-size: 1.2rem;
 }
