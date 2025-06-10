@@ -810,6 +810,7 @@ h3 {
     margin-bottom: 1.5rem;
     padding-bottom: 1rem;
     border-bottom: 2px solid var(--border-color);
+    position: relative;
 }
 
 .modal-title {
@@ -828,18 +829,61 @@ h3 {
     cursor: pointer;
     padding: 0.5rem;
     border-radius: 50%;
-    transition: var(--transition);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     width: 40px;
     height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
+    position: absolute;
+    top: -0.5rem;
+    right: -0.5rem;
+    z-index: 10;
 }
 
 .modal-close:hover {
-    background: rgba(239, 68, 68, 0.1);
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(220, 38, 38, 0.1) 100%);
     color: var(--danger-color);
-    transform: scale(1.1);
+    transform: scale(1.1) rotate(90deg);
+    border-color: rgba(239, 68, 68, 0.3);
+    box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
+}
+
+.modal-close:active {
+    transform: scale(0.95) rotate(90deg);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
+}
+
+/* Efectos adicionales para el botón de cerrar */
+.modal-close::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 60%;
+    height: 2px;
+    background: currentColor;
+    transform: translate(-50%, -50%) rotate(45deg);
+    transition: all 0.3s ease;
+}
+
+.modal-close::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 60%;
+    height: 2px;
+    background: currentColor;
+    transform: translate(-50%, -50%) rotate(-45deg);
+    transition: all 0.3s ease;
+}
+
+.modal-close:hover::before,
+.modal-close:hover::after {
+    width: 70%;
+    height: 3px;
+    box-shadow: 0 0 8px currentColor;
 }
 
 .modal-body {
@@ -2031,4 +2075,89 @@ html {
 
 .time-inputs-wrapper select:invalid {
     color: #9ca3af;
+}
+
+/* Posicionamiento mejorado del botón de cerrar en modales */
+.modal-header {
+    position: relative;
+}
+
+.modal-header .modal-close {
+    position: absolute;
+    top: -0.5rem;
+    right: -0.5rem;
+    z-index: 10;
+}
+
+/* Para el modal que no tiene header, posicionar el botón en la esquina superior derecha */
+.modal-content > .modal-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    z-index: 10;
+}
+
+/* Mejorar la respuesta táctil en dispositivos móviles */
+@media (max-width: 768px) {
+    .modal-close {
+        width: 44px;
+        height: 44px;
+        padding: 0.75rem;
+    }
+    
+    .modal-close::before,
+    .modal-close::after {
+        width: 50%;
+        height: 3px;
+    }
+    
+    .modal-close:hover::before,
+    .modal-close:hover::after {
+        width: 60%;
+        height: 4px;
+    }
+}
+
+/* Animación de entrada para el botón de cerrar */
+@keyframes modalCloseIn {
+    from {
+        opacity: 0;
+        transform: scale(0.8) rotate(-90deg);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1) rotate(0deg);
+    }
+}
+
+/* Efecto de pulso sutil para llamar la atención al botón de cerrar */
+@keyframes modalClosePulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 4px 16px rgba(239, 68, 68, 0.2);
+    }
+}
+
+.modal.show .modal-close {
+    animation: modalCloseIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both,
+               modalClosePulse 2s ease-in-out 1s 3;
+}
+
+/* Estado de focus mejorado para accesibilidad */
+.modal-close:focus {
+    outline: none;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(220, 38, 38, 0.15) 100%);
+    border-color: rgba(239, 68, 68, 0.5);
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.3);
+    transform: scale(1.1);
+}
+
+.modal-close:focus::before,
+.modal-close:focus::after {
+    width: 70%;
+    height: 3px;
 }
