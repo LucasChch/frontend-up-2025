@@ -85,14 +85,14 @@
                         <option value="USD">Dólar (USD)</option>
                         <option value="EUR">Euro (EUR)</option>
                     </select>
-                </div>
+                </div>                
                 <div id="amount-container" class="form-group">
                     <label for="amount">Monto a pagar:</label>
                     <div class="calculated-amount-wrapper">
                         <input type="number" id="amount" min="0" step="0.01" required readonly>
                         <span class="calculated-icon">🧮</span>
                     </div>
-                    <p class="helper-text">💡 El monto se calcula automáticamente según los productos y turnos seleccionados.</p>
+                    <p id="amount-helper-text" class="helper-text">💡 El monto se calcula automáticamente según los productos y turnos seleccionados.</p>
                 </div>
 
                 <h3>Productos para la reserva:</h3>

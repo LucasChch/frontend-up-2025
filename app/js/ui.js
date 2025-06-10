@@ -9,6 +9,13 @@ const UI = {
         selectedProducts: [],
         productModalCallback: null,
     },
+
+    // Configuración de tipos de cambio (según la documentación del backend)
+    exchangeRates: {
+        ARS: 1,     // Base currency (peso argentino)
+        USD: 1000,  // 1 USD = 1000 ARS
+        EUR: 1000   // 1 EUR = 1000 ARS
+    },
     
     // Referencias a elementos del DOM
     elements: {
@@ -38,10 +45,10 @@ const UI = {
         startMinute: document.getElementById('start-minute'),
         datePickerHidden: document.getElementById('date-picker-hidden'),
         dateIcon: document.querySelector('.date-icon'),
-        totalTurns: document.getElementById('total-turns'),
-        paymentMethod: document.getElementById('payment-method'),
+        totalTurns: document.getElementById('total-turns'),        paymentMethod: document.getElementById('payment-method'),
         currency: document.getElementById('currency'),
         amount: document.getElementById('amount'),
+        amountHelperText: document.getElementById('amount-helper-text'),
         
         // Campos del formulario de cliente
         customerName: document.getElementById('customer-name'),
@@ -223,14 +230,24 @@ const UI = {
             e.preventDefault();
             this.handleCustomerSubmit();
         });
-        
-        // Cambio en método de pago
+          // Cambio en método de pago
         this.elements.paymentMethod.addEventListener('change', () => {
             this.updateAmountField();
+        });
+
+        // Cambio en moneda
+        this.elements.currency.addEventListener('change', () => {
+            this.updateBookingSummary();
         });
         
         // Cambios en el total de turnos
         this.elements.totalTurns.addEventListener('change', () => {
+            this.updateBookingSummary();
+        });
+        
+        // Cambio de moneda
+        this.elements.currency.addEventListener('change', () => {
+            this.updateAmountField();
             this.updateBookingSummary();
         });
     },
@@ -911,7 +928,7 @@ const UI = {
         
         let subTotal = 0;
         
-        // Calcular subtotal basado en los productos seleccionados
+        // Calcular subtotal basado en los productos seleccionados (siempre en ARS)
         this.state.selectedProducts.forEach(item => {
             const productTotal = item.pricePerTurn * item.quantity * item.turns;
             subTotal += productTotal;
@@ -926,16 +943,26 @@ const UI = {
             discountAmt = subTotal * discountRate;
         }
         
-        const total = subTotal - discountAmt;
+        const totalInARS = subTotal - discountAmt;
+        
+        // Obtener moneda seleccionada
+        const selectedCurrency = this.getSelectedCurrency();
+        const currencySymbol = this.getCurrencySymbol(selectedCurrency);
+        
+        // Convertir valores a la moneda seleccionada
+        const subTotalConverted = this.convertFromARS(subTotal, selectedCurrency);
+        const discountAmtConverted = this.convertFromARS(discountAmt, selectedCurrency);
+        const totalConverted = this.convertFromARS(totalInARS, selectedCurrency);
         
         // Mostrar detalle de productos en el resumen
         let productsDetailHtml = '<div class="products-detail">';
         this.state.selectedProducts.forEach(item => {
             const itemTotal = item.pricePerTurn * item.quantity * item.turns;
+            const itemTotalConverted = this.convertFromARS(itemTotal, selectedCurrency);
             productsDetailHtml += `
                 <div class="product-summary-line">
                     <span>${item.productName} (${item.quantity}x${item.turns} turnos)</span>
-                    <span>$${itemTotal.toFixed(2)} ARS</span>
+                    <span>${currencySymbol}${itemTotalConverted.toFixed(2)} ${selectedCurrency}</span>
                 </div>
             `;
         });
@@ -947,23 +974,43 @@ const UI = {
             <hr>
             <div class="summary-row">
                 <span>Subtotal:</span>
-                <span>$${subTotal.toFixed(2)} ARS</span>
+                <span>${currencySymbol}${subTotalConverted.toFixed(2)} ${selectedCurrency}</span>
             </div>
             ${discountRate > 0 ? `
             <div class="summary-row">
                 <span>Descuento (${(discountRate * 100).toFixed(0)}%):</span>
-                <span>-$${discountAmt.toFixed(2)} ARS</span>
+                <span>-${currencySymbol}${discountAmtConverted.toFixed(2)} ${selectedCurrency}</span>
             </div>
             ` : ''}
             <div class="summary-row summary-total">
                 <span>Total:</span>
-                <span>$${total.toFixed(2)} ARS</span>
+                <span>${currencySymbol}${totalConverted.toFixed(2)} ${selectedCurrency}</span>
             </div>        `;
         
         // Actualizar el campo de monto usando el método centralizado
         this.updateAmountField();
+    },    /**
+     * Actualiza el texto de ayuda del campo de monto
+     */
+    updateAmountHelperText() {
+        const selectedCurrency = this.getSelectedCurrency();
+        const currencyNames = {
+            ARS: 'Peso Argentino',
+            USD: 'Dólar Estadounidense', 
+            EUR: 'Euro'
+        };
+        
+        let helperText = '💡 El monto se calcula automáticamente según los productos y turnos seleccionados.';
+        
+        if (selectedCurrency !== 'ARS') {
+            const rate = this.exchangeRates[selectedCurrency];
+            helperText += ` 💱 Conversión: 1 ${selectedCurrency} = ${rate} ARS`;
+        }
+        
+        this.elements.amountHelperText.textContent = helperText;
     },
-      /**
+
+    /**
      * Actualiza el campo de monto según el método de pago
      */
     updateAmountField() {
@@ -982,18 +1029,20 @@ const UI = {
         // Actualizar el valor
         this.elements.amount.value = total.toFixed(2);
         
+        // Actualizar el texto de ayuda
+        this.updateAmountHelperText();
+        
         // El campo permanece readonly independientemente del método de pago
         this.elements.amount.readOnly = true;
     },
-    
-    /**
-     * Calcula el total de la reserva
-     * @returns {number} - Total calculado
+      /**
+     * Calcula el total de la reserva siempre en pesos argentinos (moneda base)
+     * @returns {number} - Total calculado en ARS
      */
-    calculateTotal() {
+    calculateTotalInARS() {
         let subTotal = 0;
         
-        // Calcular subtotal
+        // Calcular subtotal en pesos argentinos (base)
         this.state.selectedProducts.forEach(item => {
             const productTotal = item.pricePerTurn * item.quantity * item.turns;
             subTotal += productTotal;
@@ -1010,6 +1059,34 @@ const UI = {
         
         return subTotal - discountAmt;
     },
+
+    /**
+     * Calcula el total de la reserva
+     * @returns {number} - Total calculado en la moneda seleccionada
+     */
+    calculateTotal() {
+        let subTotal = 0;
+        
+        // Calcular subtotal en pesos argentinos (base)
+        this.state.selectedProducts.forEach(item => {
+            const productTotal = item.pricePerTurn * item.quantity * item.turns;
+            subTotal += productTotal;
+        });
+        
+        // Aplicar descuento si hay más de un producto diferente
+        let discountRate = 0;
+        let discountAmt = 0;
+        
+        if (this.state.selectedProducts.length > 1) {
+            discountRate = 0.1; // 10% de descuento
+            discountAmt = subTotal * discountRate;
+        }
+          const totalInARS = subTotal - discountAmt;
+        
+        // Convertir a la moneda seleccionada
+        const selectedCurrency = this.getSelectedCurrency();
+        return this.convertFromARS(totalInARS, selectedCurrency);
+    },
     
     /**
      * Maneja el envío del formulario de reserva
@@ -1020,13 +1097,26 @@ const UI = {
                 this.showErrorModal('No hay productos', 'Debe seleccionar al menos un producto para la reserva.');
                 return;
             }
-            
-            const customerId = this.elements.customerSelect.value;
+              const customerId = this.elements.customerSelect.value;
             const startTime = this.elements.startTime.value;
             const totalTurns = parseInt(this.elements.totalTurns.value);
             const method = this.elements.paymentMethod.value;
             const currency = this.elements.currency.value;
-            const amount = parseFloat(this.elements.amount.value) || 0;
+              // Calcular el monto correcto según la moneda seleccionada
+            // El backend espera el monto en la moneda seleccionada, 
+            // y él maneja la conversión internamente según sus tipos de cambio
+            const totalInARS = this.calculateTotalInARS();
+            let amount;
+            
+            if (currency === 'ARS') {
+                amount = totalInARS;
+            } else if (currency === 'USD' || currency === 'EUR') {
+                // Para USD y EUR, enviamos el equivalente en esa moneda
+                // El backend espera recibir el monto en la moneda seleccionada
+                amount = totalInARS / this.exchangeRates[currency];
+            } else {
+                amount = totalInARS;
+            }
               if (!customerId || !startTime || !totalTurns) {
                 this.showErrorModal('Campos requeridos', 'Por favor complete todos los campos obligatorios.');
                 return;
@@ -1173,14 +1263,24 @@ const UI = {
                     <p><strong>Fecha de fin:</strong> ${new Date(bookingResult.booking.endTime).toLocaleString()}</p>
                 </div>
             `;
-            
-            if (bookingResult.payment) {
+              if (bookingResult.payment) {
                 const payment = bookingResult.payment;
+                
+                // Obtener la moneda que se usó en la reserva
+                const paymentCurrency = payment.currency || 'ARS';
+                const currencySymbol = this.getCurrencySymbol(paymentCurrency);
+                
+                // El backend siempre devuelve el total en ARS, necesitamos convertir
+                let displayTotal = payment.total;
+                if (paymentCurrency !== 'ARS') {
+                    displayTotal = this.convertFromARS(payment.total, paymentCurrency);
+                }
+                
                 htmlContent += `
                     <div>
                         <h3>Información del pago</h3>
                         <p><strong>Estado del pago:</strong> ${this.translatePaymentStatus(payment.status)}</p>
-                        <p><strong>Total:</strong> $${payment.total.toFixed(2)} ARS</p>
+                        <p><strong>Total:</strong> ${currencySymbol}${displayTotal.toFixed(2)} ${paymentCurrency}</p>
                         <p><strong>Método:</strong> ${payment.method === 'card' ? 'Tarjeta' : 'Efectivo'}</p>
                     `;
                 
@@ -1316,5 +1416,47 @@ const UI = {
                 errorElement.remove();
             }, 5000);
         }
+    },
+    
+    /**
+     * Convierte un monto de pesos argentinos a la moneda especificada
+     * @param {number} amountInARS - Monto en pesos argentinos
+     * @param {string} targetCurrency - Moneda objetivo (ARS, USD, EUR)
+     * @returns {number} - Monto convertido
+     */
+    convertFromARS(amountInARS, targetCurrency) {
+        if (targetCurrency === 'ARS') {
+            return amountInARS;
+        }
+        
+        const rate = this.exchangeRates[targetCurrency];
+        if (!rate) {
+            console.warn(`Moneda no soportada: ${targetCurrency}`);
+            return amountInARS;
+        }
+        
+        return amountInARS / rate;
+    },
+
+    /**
+     * Obtiene el símbolo de la moneda
+     * @param {string} currency - Código de moneda (ARS, USD, EUR)
+     * @returns {string} - Símbolo de la moneda
+     */
+    getCurrencySymbol(currency) {
+        const symbols = {
+            ARS: '$',
+            USD: 'US$',
+            EUR: '€'
+        };
+        return symbols[currency] || '$';
+    },
+
+    /**
+     * Obtiene la moneda seleccionada actualmente
+     * @returns {string} - Código de moneda seleccionada
+     */
+    getSelectedCurrency() {
+        return this.elements.currency.value || 'ARS';
     }
 };
