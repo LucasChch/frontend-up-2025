@@ -39,11 +39,26 @@
                     <select id="customer-select" required>
                         <option value="">Seleccione un cliente</option>
                     </select>
-                </div>
-
+                </div>                
                 <div class="form-group">
                     <label for="start-time">Fecha y hora de inicio:</label>
-                    <input type="datetime-local" id="start-time" required>
+                    <div class="datetime-picker-container">
+                        <div class="date-input-wrapper">
+                            <input type="text" id="start-date" placeholder="dd/mm/aaaa" required>
+                            <input type="date" id="date-picker-hidden" class="date-picker-hidden">
+                            <button type="button" class="date-icon" title="Abrir calendario">📅</button>
+                        </div>                        <div class="time-inputs-wrapper">
+                            <select id="start-hour" required>
+                                <option value="">Hora</option>
+                            </select>
+                            <span class="time-separator">:</span>
+                            <select id="start-minute" required>
+                                <option value="">Minutos</option>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- Input oculto para mantener compatibilidad -->
+                    <input type="hidden" id="start-time" required>
                 </div>
 
                 <div class="form-group">
@@ -71,11 +86,13 @@
                         <option value="EUR">Euro (EUR)</option>
                     </select>
                 </div>
-
                 <div id="amount-container" class="form-group">
                     <label for="amount">Monto a pagar:</label>
-                    <input type="number" id="amount" min="0" step="0.01" required>
-                    <p class="helper-text">El monto se calculará automáticamente.</p>
+                    <div class="calculated-amount-wrapper">
+                        <input type="number" id="amount" min="0" step="0.01" required readonly>
+                        <span class="calculated-icon">🧮</span>
+                    </div>
+                    <p class="helper-text">💡 El monto se calcula automáticamente según los productos y turnos seleccionados.</p>
                 </div>
 
                 <h3>Productos para la reserva:</h3>

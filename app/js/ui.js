@@ -30,10 +30,14 @@ const UI = {
         // Formularios
         bookingForm: document.getElementById('booking-form'),
         customerForm: document.getElementById('customer-form'),
-        
         // Campos de formulario
         customerSelect: document.getElementById('customer-select'),
         startTime: document.getElementById('start-time'),
+        startDate: document.getElementById('start-date'),
+        startHour: document.getElementById('start-hour'),
+        startMinute: document.getElementById('start-minute'),
+        datePickerHidden: document.getElementById('date-picker-hidden'),
+        dateIcon: document.querySelector('.date-icon'),
         totalTurns: document.getElementById('total-turns'),
         paymentMethod: document.getElementById('payment-method'),
         currency: document.getElementById('currency'),
@@ -69,6 +73,7 @@ const UI = {
         this.setupEventListeners();
         this.loadInitialData();
         this.setupMinDateForBooking();
+        this.setupCustomDateTimePicker();
         this.loadImages();
         this.updateTotalTurns();
         this.setupScrollHandler();
@@ -250,8 +255,7 @@ const UI = {
             this.showErrorMessage('Error al cargar datos. Por favor, recarga la página.');
         }
     },
-    
-    /**
+      /**
      * Establece la fecha mínima para reservas (no permite fechas pasadas)
      */
     setupMinDateForBooking() {
@@ -264,6 +268,253 @@ const UI = {
         
         const minDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
         this.elements.startTime.min = minDateTime;
+    },
+      /**
+     * Configura el selector personalizado de fecha y hora
+     */
+    setupCustomDateTimePicker() {
+        // Poblar selectores de hora (00-23)
+        for (let hour = 8; hour < 20; hour++) {
+            const option = document.createElement('option');
+            option.value = String(hour).padStart(2, '0');
+            option.textContent = String(hour).padStart(2, '0');
+            this.elements.startHour.appendChild(option);
+        }
+        
+        // Poblar selectores de minutos (00, 15, 30, 45)
+        const minutes = ['00', '15', '30', '45'];
+        minutes.forEach(minute => {
+            const option = document.createElement('option');
+            option.value = minute;
+            option.textContent = minute;
+            this.elements.startMinute.appendChild(option);
+        });
+        
+        // Configurar el calendario clickeable
+        this.elements.dateIcon.addEventListener('click', () => {
+            this.elements.datePickerHidden.showPicker();
+        });
+        
+        // Configurar el input date oculto
+        this.elements.datePickerHidden.addEventListener('change', (e) => {
+            const selectedDate = e.target.value;
+            if (selectedDate) {
+                // Convertir de YYYY-MM-DD a DD/MM/YYYY
+                const [year, month, day] = selectedDate.split('-');
+                const formattedDate = `${day}/${month}/${year}`;
+                this.elements.startDate.value = formattedDate;
+                this.validateDateInput(this.elements.startDate);
+            }
+        });
+        
+        // Configurar validación de fecha
+        this.elements.startDate.addEventListener('input', (e) => {
+            this.validateAndFormatDate(e.target);
+        });
+        
+        this.elements.startDate.addEventListener('blur', (e) => {
+            this.validateDateInput(e.target);
+        });
+        
+        // Event listeners para hora y minuto
+        this.elements.startHour.addEventListener('change', () => {
+            this.updateHiddenDateTimeField();
+        });
+        
+        this.elements.startMinute.addEventListener('change', () => {
+            this.updateHiddenDateTimeField();
+        });
+        
+        // Prevenir caracteres no válidos en el campo de fecha
+        this.elements.startDate.addEventListener('keypress', (e) => {
+            const char = e.key;
+            const value = e.target.value;
+            
+            // Permitir solo números y el carácter '/'
+            if (!/[0-9\/]/.test(char) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(char)) {
+                e.preventDefault();
+                return;
+            }
+            
+            // Agregar '/' automáticamente después del día y mes
+            if (/^\d{2}$/.test(value) || /^\d{2}\/\d{2}$/.test(value)) {
+                if (char !== '/' && /\d/.test(char)) {
+                    e.target.value = value + '/';
+                }
+            }
+        });
+        
+        // Configurar fecha y hora mínima (fecha actual)
+        this.setMinimumDateTime();
+    },
+    
+    /**
+     * Valida y formatea la fecha mientras el usuario escribe
+     */
+    validateAndFormatDate(input) {
+        let value = input.value.replace(/[^\d\/]/g, ''); // Solo números y /
+        
+        // Formatear automáticamente con /
+        if (value.length === 2 && !value.includes('/')) {
+            value += '/';
+        } else if (value.length === 5 && value.split('/').length === 2) {
+            value += '/';
+        }
+        
+        // Limitar la longitud
+        if (value.length > 10) {
+            value = value.substring(0, 10);
+        }
+        
+        input.value = value;
+        this.updateHiddenDateTimeField();
+    },
+    
+    /**
+     * Valida la fecha completa cuando el usuario termina de editarla
+     */
+    validateDateInput(input) {
+        const value = input.value;
+        const datePattern = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+        const match = value.match(datePattern);
+        
+        if (!match) {
+            input.classList.add('invalid');
+            input.classList.remove('valid');
+            this.showDateValidationMessage('Formato de fecha inválido. Use dd/mm/aaaa', 'error');
+            return false;
+        }
+        
+        const [, day, month, year] = match;
+        const date = new Date(year, month - 1, day);
+        
+        // Verificar si la fecha es válida
+        if (date.getDate() != day || date.getMonth() != month - 1 || date.getFullYear() != year) {
+            input.classList.add('invalid');
+            input.classList.remove('valid');
+            this.showDateValidationMessage('Fecha inválida. Verifique el día, mes y año.', 'error');
+            return false;
+        }
+        
+        // Verificar si la fecha no es en el pasado
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        
+        if (date < now) {
+            input.classList.add('invalid');
+            input.classList.remove('valid');
+            this.showDateValidationMessage('No se pueden hacer reservas en fechas pasadas.', 'error');
+            return false;
+        }
+        
+        input.classList.remove('invalid');
+        input.classList.add('valid');
+        this.hideDateValidationMessage();
+        this.updateHiddenDateTimeField();
+        return true;
+    },
+    
+    /**
+     * Actualiza el campo hidden para mantener compatibilidad
+     */
+    updateHiddenDateTimeField() {
+        const date = this.elements.startDate.value;
+        const hour = this.elements.startHour.value;
+        const minute = this.elements.startMinute.value;
+        
+        if (date && hour && minute) {
+            const datePattern = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+            const match = date.match(datePattern);
+            
+            if (match) {
+                const [, day, month, year] = match;
+                const isoDateTime = `${year}-${month}-${day}T${hour}:${minute}`;
+                this.elements.startTime.value = isoDateTime;
+                
+                // Validar que la fecha y hora no sean en el pasado
+                const selectedDateTime = new Date(year, month - 1, day, hour, minute);
+                const now = new Date();
+                
+                const container = this.elements.startDate.closest('.datetime-picker-container');
+                if (selectedDateTime < now) {
+                    container.classList.add('invalid');
+                    container.classList.remove('valid');
+                    this.showDateValidationMessage('La fecha y hora seleccionadas no pueden ser en el pasado.', 'error');
+                } else {
+                    container.classList.remove('invalid');
+                    container.classList.add('valid');
+                    this.hideDateValidationMessage();
+                }
+            }
+        } else {
+            this.elements.startTime.value = '';
+        }
+    },
+      /**
+     * Establece la fecha y hora mínima permitida
+     */
+    setMinimumDateTime() {
+        const now = new Date();
+        const currentDay = String(now.getDate()).padStart(2, '0');
+        const currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+        const currentYear = now.getFullYear();
+        const currentHour = String(now.getHours()).padStart(2, '0');
+        
+        // Establecer fecha actual como placeholder mejorado
+        this.elements.startDate.placeholder = `Ej: ${currentDay}/${currentMonth}/${currentYear}`;
+        
+        // Configurar fecha mínima en el input date oculto
+        const minDate = `${currentYear}-${currentMonth}-${currentDay}`;
+        this.elements.datePickerHidden.min = minDate;
+        
+        // Preseleccionar hora actual redondeada al siguiente cuarto de hora
+        const currentMinutes = now.getMinutes();
+        let nextQuarter;
+        if (currentMinutes < 15) nextQuarter = '15';
+        else if (currentMinutes < 30) nextQuarter = '30';
+        else if (currentMinutes < 45) nextQuarter = '45';
+        else {
+            nextQuarter = '00';
+            // Si pasamos a la siguiente hora
+            const nextHour = (parseInt(currentHour) + 1) % 24;
+            this.elements.startHour.value = String(nextHour).padStart(2, '0');
+        }
+        
+        if (nextQuarter !== '00' || currentMinutes >= 45) {
+            this.elements.startHour.value = currentHour;
+        }
+        this.elements.startMinute.value = nextQuarter;
+    },
+    
+    /**
+     * Muestra mensaje de validación para la fecha
+     */
+    showDateValidationMessage(message, type = 'error') {
+        // Remover mensaje anterior si existe
+        this.hideDateValidationMessage();
+        
+        const container = this.elements.startDate.closest('.form-group');
+        const messageElement = document.createElement('div');
+        messageElement.className = `form-validation-message ${type}`;
+        messageElement.textContent = message;
+        messageElement.id = 'date-validation-message';
+        
+        container.appendChild(messageElement);
+        
+        // Mostrar el mensaje con animación
+        setTimeout(() => {
+            messageElement.style.display = 'block';
+        }, 10);
+    },
+    
+    /**
+     * Oculta el mensaje de validación de la fecha
+     */
+    hideDateValidationMessage() {
+        const existingMessage = document.getElementById('date-validation-message');
+        if (existingMessage) {
+            existingMessage.remove();
+        }
     },
     
     /**
@@ -608,8 +859,7 @@ const UI = {
             
             this.elements.bookingProducts.appendChild(productItem);
         });
-    },
-      /**
+    },    /**
      * Elimina un producto de la reserva
      * @param {number} index - Índice del producto en el array
      */
@@ -617,7 +867,8 @@ const UI = {
         this.state.selectedProducts.splice(index, 1);
         this.renderBookingProducts();
         this.updateTotalTurns();
-        this.updateBookingSummary();    },
+        this.updateBookingSummary();
+    },
     
     /**
      * Actualiza automáticamente el select de total de turnos basado en los productos seleccionados
@@ -707,29 +958,32 @@ const UI = {
             <div class="summary-row summary-total">
                 <span>Total:</span>
                 <span>$${total.toFixed(2)} ARS</span>
-            </div>
-        `;
+            </div>        `;
         
-        // Actualizar campo de monto si el método de pago es tarjeta
-        if (this.elements.paymentMethod.value === 'card') {
-            this.elements.amount.value = total.toFixed(2);
-        }
+        // Actualizar el campo de monto usando el método centralizado
+        this.updateAmountField();
     },
-    
-    /**
+      /**
      * Actualiza el campo de monto según el método de pago
      */
     updateAmountField() {
-        const isCard = this.elements.paymentMethod.value === 'card';
+        // El campo siempre es readonly ya que se calcula automáticamente
+        const total = this.calculateTotal();
         
-        if (isCard) {
-            // Para tarjeta, el monto debe ser obligatorio y se calcula automáticamente
-            this.elements.amount.value = this.calculateTotal().toFixed(2);
-            this.elements.amount.readOnly = true;
-        } else {
-            // Para efectivo, puede ser 0 o se puede editar
-            this.elements.amount.readOnly = false;
+        // Agregar animación de actualización
+        const wrapper = this.elements.amount.closest('.calculated-amount-wrapper');
+        if (wrapper) {
+            wrapper.classList.add('updating');
+            setTimeout(() => {
+                wrapper.classList.remove('updating');
+            }, 600);
         }
+        
+        // Actualizar el valor
+        this.elements.amount.value = total.toFixed(2);
+        
+        // El campo permanece readonly independientemente del método de pago
+        this.elements.amount.readOnly = true;
     },
     
     /**
